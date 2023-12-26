@@ -7,6 +7,9 @@ Enchantments extractor enables MineClone2 users(mineclonia, MineClone5, etc) to 
 
 There is 1 item slot for the regular books, 1 item slot for the item you want to extract. and 9 output slots where the extracted enchants go.
 
+THe first input slot you can only put "mcl_books:book" the second, you can put any item with an enchant on it. the output you cannot put only take items
+Put labels above the inputs and outputs.
+
 ## Licenses
 
 ### Code License and Other License
