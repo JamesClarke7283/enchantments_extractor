@@ -8,9 +8,11 @@ local function get_extractor_formspec()
     -- Helper function to add inventory components to the formspec
     local function add_inventory_components(label, bg, list, listring)
         table.insert(formspec, "label" .. label)
-        table.insert(formspec, bg)  -- This will add the background right after the label
+        table.insert(formspec, bg)  -- Add the background right after the label
         table.insert(formspec, "list" .. list)
-        table.insert(formspec, "listring" .. listring)
+        if listring then
+            table.insert(formspec, "listring" .. listring)
+        end
     end
 
     -- Define labels, backgrounds, lists, and listrings for the UI elements with consistent positioning
@@ -55,6 +57,7 @@ local function get_extractor_formspec()
     -- Return the concatenated formspec string
     return table.concat(formspec)
 end
+
 
 
 
