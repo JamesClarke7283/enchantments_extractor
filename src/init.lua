@@ -1,3 +1,16 @@
+-- Taken from mcl_grindstone/init.lua
+local function create_new_item(name_item, meta, wear)
+    local new_item = ItemStack(name_item)
+    if wear ~= nil then
+            new_item:set_wear(wear)
+    end
+    local new_meta = new_item:get_meta()
+    new_meta:set_string("name", meta:get_string("name"))
+    tt.reload_itemstack_description(new_item)
+    return new_item
+end
+
+
 local function get_extractor_formspec()
     -- Define the formspec version and size
     local formspec = {
@@ -48,43 +61,91 @@ end
 minetest.register_node("enchantments_extractor:enchantment_extractor", {
     description = "Enchantment Extractor",
     tiles = {
-        "mcl_enchanting_table_top.png", 
-        "mcl_enchanting_table_bottom.png",                        
+        "mcl_enchanting_table_top.png",
+        "mcl_enchanting_table_bottom.png",
         "mcl_enchanting_table_side.png",
         "mcl_enchanting_table_side.png",
         "mcl_enchanting_table_side.png",
         "mcl_enchanting_table_side.png"
     },
     groups = {cracky = 3, pickaxey = 2},
+
     on_construct = function(pos)
         local meta = minetest.get_meta(pos)
         local inv = meta:get_inventory()
         inv:set_size("input_book", 1)
         inv:set_size("input_enchanted", 1)
-        inv:set_size("output_books", 9)
+        inv:set_size("output_books", 8)
         local form = get_extractor_formspec()
         meta:set_string("formspec", form)
     end,
-    allow_metadata_inventory_put = function(pos, listname, index, stack, player)
-        if listname == "input_book" then
-            if stack:get_name() == "mcl_books:book" then
+
+        -- This function will be called whenever an item is attempted to be put in the node's inventory
+        allow_metadata_inventory_put = function(pos, listname, index, stack, player)
+            local meta = minetest.get_meta(pos)
+            local inv = meta:get_inventory()
+        
+            if listname == "input_book" and stack:get_name() == "mcl_books:book" then
+                -- Allow any number of books
                 return stack:get_count()
-            else
-                return 0 -- Disallow other items
+            elseif listname == "input_enchanted" then
+                if mcl_enchanting.is_enchanted(stack:get_name()) then
+                    local input_book_stack = inv:get_stack("input_book", 1)
+                    local num_books = input_book_stack:get_count()
+                    local enchantments = mcl_enchanting.get_enchantments(stack)
+                    local num_enchantments = table.getn(enchantments) -- Get the number of different enchantments
+        
+                    -- Only allow the enchanted item to be placed if there are enough books
+                    if num_books >= num_enchantments then
+                        return stack:get_count()
+                    else
+                        -- Not enough books, do not allow the enchanted item to be placed
+                        return 0
+                    end
+                end
             end
-        elseif listname == "input_enchanted" then
-            -- Here you should check for an "enchanted" group or a specific itemstring
-            -- This is a placeholder condition:
-            if minetest.get_item_group(stack:get_name(), "enchanted") > 0 then
-                return stack:get_count()
-            else
-                return 0 -- Disallow other items
+        
+            -- Disallow placing items by default
+            return 0
+        end,        
+
+    -- This function will be called after an item is put in the node's inventory
+    -- This function will be called after an item is put in the node's inventory
+    on_metadata_inventory_put = function(pos, listname, index, stack, player)
+        if listname == "input_enchanted" then
+            local meta = minetest.get_meta(pos)
+            local inv = meta:get_inventory()
+
+            local input_book_stack = inv:get_stack("input_book", 1)
+            local num_books = input_book_stack:get_count()
+
+            local enchantments = mcl_enchanting.get_enchantments(stack)
+            local num_enchantments = table.getn(enchantments)
+
+            if num_books >= num_enchantments then
+                -- Disenchant the item and decrement the books
+                local new_item
+                if string.find(stack:get_name(), "book_enchanted") then
+                    -- If it's an enchanted book, replace it with a normal book
+                    new_item = ItemStack("mcl_books:book")
+                else
+                    -- For other enchanted items, create a new disenchanted item
+                    new_item = create_new_item(stack:get_name(), stack:get_meta(), stack:get_wear())
+                end
+                inv:set_stack("output_books", 1, new_item)  -- Place the new item in the output slot
+
+                -- Decrement the number of books
+                input_book_stack:take_item(num_enchantments)
+                inv:set_stack("input_book", 1, input_book_stack)
+
+                -- Remove the enchanted item from the input slot
+                inv:set_stack("input_enchanted", 1, nil)
             end
-        elseif listname == "output_books" then
-            return 0 -- Disallow placing items manually in output
         end
-        return 0 -- Disallow by default for any other lists
     end,
+
+
+
     _mcl_blast_resistance = 1200,
-    _mcl_hardness = 5
+    _mcl_hardness = 5,
 })
